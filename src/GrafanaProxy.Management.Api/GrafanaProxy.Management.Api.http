@@ -1,0 +1,6 @@
+@GrafanaProxy.Management.Api_HostAddress = http://localhost:5058
+
+GET {{GrafanaProxy.Management.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,125 @@
+# Visual Studio / Rider / .NET Core template
+# --- User-specific files ---
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# --- Build results ---
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleasePublic/
+[Xx]64/
+[Aa]rm64/
+[Xx]86/
+[Aa]rm/
+[Ww]eb[Aa]ssembly/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# --- Service Fabric ---
+[Ss]ervice[Ff]abric[Ll]ogs/
+[Aa]pplication[Pp]ackage[Rr]oot/
+[Aa]pplication[Pp]arameters/
+
+# --- Visual Studio / IDE specific ---
+.vs/
+.idea/
+*.sln.iml
+*.sln.DotSettings.user
+
+# --- Tools ---
+*.nupkg
+*.snupkg
+*.tar.gz
+packages/
+*.nuget.props
+*.nuget.targets
+*.latest
+
+# --- Tests ---
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.[Cc]overage[Jj]son
+*_i[3-6]86/
+*_x64/
+
+# --- OS generated files ---
+[Dd]esktop.ini
+[Tt]humbs.db
+ehthumbs.db
+*.DS_Store
+._*
+
+# --- BenchmarkDotNet ---
+BenchmarkDotNet.Artifacts/
+
+# --- Specific to this project ---
+src/logs/
+src/grafana_proxy_config.db
+
+# --- Cursor ---
+.cursor/
+
+# --- Environment ---
+.env*
+!/.env.example
+
+# Roslyn files
+.roslyn/
+
+# Visual Studio specific
+*.csproj.user
+*.csproj.references
+
+# Test results
+TestResults/
+*.trx
+*.coverlet.json
+
+# User-specific files
+*.secrets.json
+
+# Tools
+*.ncrunch*
+*.*.mdf
+*.*.ldf
+*.tmp
+
+# Logs
+[Ll]ogs/
+*.log
+src/logs/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Packages
+**/packages/*
+# except build/, because it's needed for building Deps.managed.*.dll
+!**/packages/build/
+# except themes/, because it's needed for building ClassLibrary1.UnitTest*
+!**/packages/themes/
+
+# Nuget Packages
+*.nupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, because it's used for MinVer installs
+!**/[Pp]ackages/build/
+
+# Cache files
+*.nuget.props
+*.nuget.targets
+
+# Environment files
+.env
+
+# Cursor specific
+.cursor/ 

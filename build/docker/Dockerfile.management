@@ -1,0 +1,41 @@
+# Use the ASP.NET Core runtime image as a base
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS base
+WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
+
+# Use the SDK image to build the application
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+
+# Copy csproj files and restore as distinct layers
+COPY ["src/GrafanaProxy.Management.Api/GrafanaProxy.Management.Api.csproj", "src/GrafanaProxy.Management.Api/"]
+COPY ["src/GrafanaProxy.Application/GrafanaProxy.Application.csproj", "src/GrafanaProxy.Application/"]
+COPY ["src/GrafanaProxy.Core/GrafanaProxy.Core.csproj", "src/GrafanaProxy.Core/"]
+COPY ["src/GrafanaProxy.Infrastructure/GrafanaProxy.Infrastructure.csproj", "src/GrafanaProxy.Infrastructure/"]
+
+# Copy NuGet.config if exists (optional)
+# COPY ["NuGet.config", "./"]
+
+RUN dotnet restore "src/GrafanaProxy.Management.Api/GrafanaProxy.Management.Api.csproj"
+
+# Copy the rest of the source code
+COPY . .
+WORKDIR "/src/src/GrafanaProxy.Management.Api"
+
+# Build the application
+RUN dotnet build "GrafanaProxy.Management.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+# Publish the application
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "GrafanaProxy.Management.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+# Create the final image from the base
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+# Set the entry point for the container
+ENTRYPOINT ["dotnet", "GrafanaProxy.Management.Api.dll"] 

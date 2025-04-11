@@ -1,0 +1,233 @@
+{
+	"info": {
+		"_postman_id": "{{$guid}}",
+		"name": "GrafanaProxy Management API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"description": "Integration tests for the GrafanaProxy Management API."
+	},
+	"item": [
+		{
+			"name": "Tenants",
+			"item": [
+				{
+					"name": "Create Tenant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has ID and exactly 2 API keys\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData.id).to.be.a('number');",
+									"    pm.expect(jsonData).to.have.property('apiKeys');",
+									"    pm.expect(jsonData.apiKeys).to.be.an('array').with.lengthOf(2);",
+									"    pm.collectionVariables.set(\"createdTenantId\", jsonData.id);",
+									"    pm.collectionVariables.set(\"createdTenantShortCode\", jsonData.shortCode);",
+									"});"
+								],
+								"type": "text/javascript",
+                                "packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Tenant (Postman) - {{$randomInt}}\",\n    \"shortCode\": \"PM_{{$randomInt}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tenants",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tenants"
+							]
+						}
+					},
+					"response": []
+				},
+                {
+					"name": "Get Tenant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+                                    "",
+                                    "pm.test(\"Response has expected ID and ShortCode\", function () {",
+									"    var jsonData = pm.response.json();",
+                                    "    var expectedId = pm.collectionVariables.get(\"createdTenantId\");",
+                                    "    var expectedShortCode = pm.collectionVariables.get(\"createdTenantShortCode\");",
+									"    pm.expect(jsonData.id).to.eql(parseInt(expectedId));", 
+                                    "    pm.expect(jsonData.shortCode).to.eql(expectedShortCode);",
+									"});"
+								],
+								"type": "text/javascript",
+                                "packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tenants/{{createdTenantId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tenants",
+								"{{createdTenantId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Regenerate Key",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+                                    "",
+                                    "pm.test(\"Response contains NewApiKey\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('newApiKey');",
+									"    pm.expect(jsonData.newApiKey).to.be.a('string');",
+									"});"
+								],
+								"type": "text/javascript",
+                                "packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tenants/{{createdTenantId}}/regenerateKey/0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tenants",
+								"{{createdTenantId}}",
+								"regenerateKey",
+								"0"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Dashboard Permission",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+                                    "",
+                                    "pm.test(\"Response has correct TenantId and DashboardUid\", function () {",
+									"    var jsonData = pm.response.json();",
+                                    "    var expectedTenantId = pm.collectionVariables.get(\"createdTenantId\");",
+                                    "    var expectedUid = pm.iterationData.get(\"dashboardUid\") || \"dash_{{$randomInt}}\";",
+									"    pm.expect(jsonData).to.have.property('tenantId');",
+									"    pm.expect(jsonData.tenantId).to.eql(parseInt(expectedTenantId));",
+									"    pm.expect(jsonData).to.have.property('dashboardUid');",
+									"    pm.expect(jsonData.dashboardUid).to.eql(expectedUid);",
+									"});"
+								],
+								"type": "text/javascript",
+                                "packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"dashboardUid\": \"dash_{{$randomInt}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tenants/{{createdTenantId}}/dashboards",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tenants",
+								"{{createdTenantId}}",
+								"dashboards"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8090",
+			"type": "string",
+            "description": "Base URL for the Management API (change if using HTTPS or different port)"
+		},
+        {
+			"key": "createdTenantId",
+			"value": "",
+			"type": "string",
+            "description": "Holds the ID of the tenant created by the 'Create Tenant' request."
+		},
+         {
+			"key": "createdTenantShortCode",
+			"value": "",
+			"type": "string",
+            "description": "Holds the ShortCode of the tenant created by the 'Create Tenant' request."
+		}
+	]
+} 

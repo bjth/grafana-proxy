@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  grafana-proxy-web:
+    container_name: grafana-proxy-web
+    build:
+      context: ..
+      dockerfile: Dockerfile.web
+    ports:
+      - "8080:8080" # Expose HTTP
+      - "8081:8081" # Expose HTTPS
+    environment:
+      # Environment variables needed by the web app (e.g., ASPNETCORE_ENVIRONMENT, URLs)
+      - ASPNETCORE_ENVIRONMENT=Development # Or Production
+      - ASPNETCORE_URLS=https://+:8081;http://+:8080
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=${KESTREL_CERT_PASSWORD} # Use an environment variable or manage secrets
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      # Connection string needs to point to the shared volume
+      - ConnectionStrings__DefaultConnection=Data Source=/data/grafana_proxy_config.db
+      # Allow configuring Grafana destination URL via environment variable
+      - ReverseProxy__Clusters__grafana-cluster__Destinations__destination1__Address=${GRAFANA_URL:-https://play.grafana.org/}
+    volumes:
+      - grafana_proxy_data:/data # Mount the shared volume for the database
+      - ~/.aspnet/https:/https:ro # Mount ASP.NET dev certs (if needed for Development)
+    depends_on:
+      - grafana-proxy-management # Optional: Ensure management API starts first if needed
+    networks:
+      - proxy-network
+
+  grafana-proxy-management:
+    container_name: grafana-proxy-management
+    build:
+      context: ..
+      dockerfile: Dockerfile.management
+    ports:
+      - "8090:8080" # Expose Management API on a different host port
+      - "8091:8081"
+    environment:
+      # Environment variables needed by the management app
+      - ASPNETCORE_ENVIRONMENT=Development # Or Production
+      - ASPNETCORE_URLS=https://+:8081;http://+:8080
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=${KESTREL_CERT_PASSWORD}
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+       # Connection string needs to point to the shared volume
+      - ConnectionStrings__DefaultConnection=Data Source=/data/grafana_proxy_config.db
+    volumes:
+      - grafana_proxy_data:/data # Mount the shared volume for the database
+      - ~/.aspnet/https:/https:ro # Mount ASP.NET dev certs (if needed for Development)
+    networks:
+      - proxy-network
+
+volumes:
+  grafana_proxy_data: # Define the shared volume for the SQLite database
+
+networks:
+  proxy-network:
+    driver: bridge 
