@@ -15,7 +15,8 @@ namespace GrafanaProxy.Management.Api.Controllers
         private readonly ILogger<TenantsController> _logger;
         private readonly IApiKeyHasher _apiKeyHasher;
 
-        public TenantsController(IApplicationDbContext context, ILogger<TenantsController> logger, IApiKeyHasher apiKeyHasher)
+        public TenantsController(IApplicationDbContext context, ILogger<TenantsController> logger,
+            IApiKeyHasher apiKeyHasher)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -37,6 +38,7 @@ namespace GrafanaProxy.Management.Api.Controllers
             {
                 return BadRequest("Tenant name cannot be empty.");
             }
+
             if (string.IsNullOrWhiteSpace(request.ShortCode))
             {
                 return BadRequest("Tenant ShortCode cannot be empty.");
@@ -47,18 +49,13 @@ namespace GrafanaProxy.Management.Api.Controllers
             // Using || might be slightly less efficient than two separate queries but is concise
             var existingTenant = await _context.Tenants
                 .FirstOrDefaultAsync(t => t.Name.ToLower() == request.Name.ToLower()
-                                       || t.ShortCode.ToLower() == request.ShortCode.ToLower());
+                                          || t.ShortCode.ToLower() == request.ShortCode.ToLower());
 
             if (existingTenant != null)
             {
-                if (existingTenant.Name.Equals(request.Name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return Conflict($"Tenant with name '{request.Name}' already exists.");
-                }
-                else // Must be the ShortCode that conflicts
-                {
-                     return Conflict($"Tenant with ShortCode '{request.ShortCode}' already exists.");
-                }
+                return Conflict(existingTenant.Name.Equals(request.Name, StringComparison.OrdinalIgnoreCase)
+                    ? $"Tenant with name '{request.Name}' already exists."
+                    : $"Tenant with ShortCode '{request.ShortCode}' already exists.");
             }
 
             var tenant = new Tenant
@@ -68,12 +65,12 @@ namespace GrafanaProxy.Management.Api.Controllers
             };
 
             // Generate TWO plain text keys first
-            string plainTextKey1 = GenerateNewApiKey();
-            string plainTextKey2 = GenerateNewApiKey();
+            var plainTextKey1 = GenerateNewApiKey();
+            var plainTextKey2 = GenerateNewApiKey();
 
             // Hash the keys for storage
-            string hashedKey1 = _apiKeyHasher.HashApiKey(plainTextKey1);
-            string hashedKey2 = _apiKeyHasher.HashApiKey(plainTextKey2);
+            var hashedKey1 = _apiKeyHasher.HashApiKey(plainTextKey1);
+            var hashedKey2 = _apiKeyHasher.HashApiKey(plainTextKey2);
 
             var apiKey1 = new ApiKey
             {
@@ -94,7 +91,8 @@ namespace GrafanaProxy.Management.Api.Controllers
             _context.Tenants.Add(tenant);
             await _context.SaveChangesAsync(CancellationToken.None);
 
-            _logger.LogInformation("Created Tenant '{TenantName}' with ID {TenantId} and 2 API Keys.", tenant.Name, tenant.Id);
+            _logger.LogInformation("Created Tenant '{TenantName}' with ID {TenantId} and 2 API Keys.", tenant.Name,
+                tenant.Id);
 
             // IMPORTANT: Return the PLAIN TEXT keys only this one time.
             // Create a DTO to avoid returning the hashed keys from the Tenant object.
@@ -106,7 +104,7 @@ namespace GrafanaProxy.Management.Api.Controllers
                 CreatedAt = tenant.CreatedAt,
                 LastModifiedAt = tenant.LastModifiedAt,
                 // Expose the generated plain text keys
-                GeneratedApiKeys = new List<string> { plainTextKey1, plainTextKey2 }
+                GeneratedApiKeys = [plainTextKey1, plainTextKey2]
             };
 
             // Return the DTO
@@ -122,14 +120,15 @@ namespace GrafanaProxy.Management.Api.Controllers
         public async Task<ActionResult<Tenant>> GetTenant(int tenantId)
         {
             var tenant = await _context.Tenants
-                                       .Include(t => t.ApiKeys)
-                                       .Include(t => t.Permissions)
-                                       .FirstOrDefaultAsync(t => t.Id == tenantId);
+                .Include(t => t.ApiKeys)
+                .Include(t => t.Permissions)
+                .FirstOrDefaultAsync(t => t.Id == tenantId);
 
             if (tenant == null)
             {
                 return NotFound();
             }
+
             return Ok(tenant);
         }
 
@@ -144,8 +143,8 @@ namespace GrafanaProxy.Management.Api.Controllers
 
             // Find the tenant and include their existing API keys
             var tenant = await _context.Tenants
-                                       .Include(t => t.ApiKeys)
-                                       .FirstOrDefaultAsync(t => t.Id == tenantId);
+                .Include(t => t.ApiKeys)
+                .FirstOrDefaultAsync(t => t.Id == tenantId);
 
             if (tenant == null)
             {
@@ -156,9 +155,10 @@ namespace GrafanaProxy.Management.Api.Controllers
             // Ensure the tenant has the expected number of keys (should be 2)
             if (tenant.ApiKeys.Count != 2)
             {
-                 _logger.LogError("RegenerateApiKey failed: Tenant ID {TenantId} has {KeyCount} keys instead of 2.", tenantId, tenant.ApiKeys.Count);
-                 // This indicates an inconsistent state, might need investigation
-                 return StatusCode(StatusCodes.Status500InternalServerError, "Tenant key data is inconsistent.");
+                _logger.LogError("RegenerateApiKey failed: Tenant ID {TenantId} has {KeyCount} keys instead of 2.",
+                    tenantId, tenant.ApiKeys.Count);
+                // This indicates an inconsistent state, might need investigation
+                return StatusCode(StatusCodes.Status500InternalServerError, "Tenant key data is inconsistent.");
             }
 
             // Get the key at the specified index (order might depend on retrieval, be careful if order matters)
@@ -176,7 +176,9 @@ namespace GrafanaProxy.Management.Api.Controllers
 
             await _context.SaveChangesAsync(CancellationToken.None);
 
-            _logger.LogInformation("Regenerated API Key at index {KeyIndex} for Tenant '{TenantName}' (ID: {TenantId}).", keyIndex, tenant.Name, tenantId);
+            _logger.LogInformation(
+                "Regenerated API Key at index {KeyIndex} for Tenant '{TenantName}' (ID: {TenantId}).", keyIndex,
+                tenant.Name, tenantId);
 
             // IMPORTANT: Return the PLAIN TEXT key only this one time.
             return Ok(new { NewApiKey = newPlainTextKey });
@@ -185,7 +187,8 @@ namespace GrafanaProxy.Management.Api.Controllers
 
         // Endpoint for Associating a Tenant with a Dashboard
         [HttpPost("{tenantId}/dashboards")]
-        public async Task<IActionResult> AddDashboardPermission(int tenantId, [FromBody] AddDashboardPermissionRequest request)
+        public async Task<IActionResult> AddDashboardPermission(int tenantId,
+            [FromBody] AddDashboardPermissionRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.DashboardUid))
             {
@@ -206,7 +209,9 @@ namespace GrafanaProxy.Management.Api.Controllers
 
             if (permissionExists)
             {
-                 _logger.LogInformation("AddDashboardPermission skipped: Tenant '{TenantName}' (ID: {TenantId}) already has permission for Dashboard '{DashboardUid}'.", tenant.Name, tenantId, request.DashboardUid);
+                _logger.LogInformation(
+                    "AddDashboardPermission skipped: Tenant '{TenantName}' (ID: {TenantId}) already has permission for Dashboard '{DashboardUid}'.",
+                    tenant.Name, tenantId, request.DashboardUid);
                 // Return Conflict or Ok depending on desired idempotency behavior
                 return Conflict($"Tenant already has permission for dashboard '{request.DashboardUid}'.");
             }
@@ -221,16 +226,19 @@ namespace GrafanaProxy.Management.Api.Controllers
             _context.TenantDashboardPermissions.Add(newPermission);
             await _context.SaveChangesAsync(CancellationToken.None);
 
-             _logger.LogInformation("Added permission for Tenant '{TenantName}' (ID: {TenantId}) to access Dashboard '{DashboardUid}'.", tenant.Name, tenantId, request.DashboardUid);
+            _logger.LogInformation(
+                "Added permission for Tenant '{TenantName}' (ID: {TenantId}) to access Dashboard '{DashboardUid}'.",
+                tenant.Name, tenantId, request.DashboardUid);
 
             // Return success (consider returning the created permission object if useful)
-            return CreatedAtAction(nameof(GetTenant), new { tenantId = tenant.Id }, newPermission); // Reuse GetTenant or create a specific GetPermission endpoint
+            return CreatedAtAction(nameof(GetTenant), new { tenantId = tenant.Id },
+                newPermission); // Reuse GetTenant or create a specific GetPermission endpoint
         }
 
         // --- Response DTO (can be moved) ---
         public class CreateTenantResponse
         {
-             public int Id { get; set; }
+            public int Id { get; set; }
             public string Name { get; set; } = string.Empty;
             public string ShortCode { get; set; } = string.Empty;
             public DateTime CreatedAt { get; set; }
@@ -242,22 +250,19 @@ namespace GrafanaProxy.Management.Api.Controllers
         private string GenerateNewApiKey()
         {
             // Simple GUID based key generation. Replace with a more robust method if needed.
-            return Guid.NewGuid().ToString(); 
+            return Guid.NewGuid().ToString();
         }
 
         // --- Request Models (can be moved to a separate file/folder) ---
         public class CreateTenantRequest
         {
-            [Required(AllowEmptyStrings = false)]
-            public string Name { get; set; } = string.Empty;
-            [Required(AllowEmptyStrings = false)]
-            public string ShortCode { get; set; } = string.Empty;
+            [Required(AllowEmptyStrings = false)] public string Name { get; set; } = string.Empty;
+            [Required(AllowEmptyStrings = false)] public string ShortCode { get; set; } = string.Empty;
         }
 
-         public class AddDashboardPermissionRequest
+        public class AddDashboardPermissionRequest
         {
-            [Required(AllowEmptyStrings = false)]
-            public string DashboardUid { get; set; } = string.Empty;
+            [Required(AllowEmptyStrings = false)] public string DashboardUid { get; set; } = string.Empty;
         }
     }
-} 
+}

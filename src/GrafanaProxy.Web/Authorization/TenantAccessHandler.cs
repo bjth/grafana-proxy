@@ -1,10 +1,9 @@
 using GrafanaProxy.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Routing; // Needed for GetRouteValue
-using GrafanaProxy.Infrastructure.Services; // Added using for hasher
-using GrafanaProxy.Core.Entities; // Added using for ApiKey
+using GrafanaProxy.Core.Entities;
+using GrafanaProxy.Infrastructure.Services;
+using Microsoft.AspNetCore.Http.Features; // Added using for ApiKey
 
 namespace GrafanaProxy.Web.Authorization
 {
@@ -13,15 +12,13 @@ namespace GrafanaProxy.Web.Authorization
         private readonly ILogger<TenantAccessHandler> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IServiceProvider _serviceProvider; // To resolve scoped DbContext
-        private readonly IApiKeyHasher _apiKeyHasher; // Added hasher
 
         // Inject IServiceProvider to resolve scoped DbContext within the handler
-        public TenantAccessHandler(ILogger<TenantAccessHandler> logger, IHttpContextAccessor httpContextAccessor, IServiceProvider serviceProvider, IApiKeyHasher apiKeyHasher) // Inject hasher
+        public TenantAccessHandler(ILogger<TenantAccessHandler> logger, IHttpContextAccessor httpContextAccessor, IServiceProvider serviceProvider) // Inject hasher
         {
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
             _serviceProvider = serviceProvider;
-            _apiKeyHasher = apiKeyHasher; // Store hasher
         }
 
         protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, TenantAccessRequirement requirement)
@@ -59,17 +56,17 @@ namespace GrafanaProxy.Web.Authorization
 
             // --- 2. Get Dashboard UID from Route ---
             string? dashboardUid = null;
-            var routingFeature = httpContext.Features.Get<IRoutingFeature>();
-            if (routingFeature?.RouteData != null)
+            var routingFeature = httpContext.Features.Get<IRouteValuesFeature>();
+            if (routingFeature?.RouteValues != null)
             {
                 // Try getting 'dashboardUid' directly
-                if (routingFeature.RouteData.Values.TryGetValue("dashboardUid", out var uidValue))
+                if (routingFeature.RouteValues.TryGetValue("dashboardUid", out var uidValue))
                 {
                     dashboardUid = uidValue?.ToString();
                 }
 
                 // Fallback/Alternative: If UID is part of a catch-all 'remainder'
-                if (string.IsNullOrEmpty(dashboardUid) && routingFeature.RouteData.Values.TryGetValue("remainder", out var remainderValue))
+                if (string.IsNullOrEmpty(dashboardUid) && routingFeature.RouteValues.TryGetValue("remainder", out var remainderValue))
                 {
                     var remainder = remainderValue?.ToString();
                     if (!string.IsNullOrEmpty(remainder))
@@ -95,6 +92,7 @@ namespace GrafanaProxy.Web.Authorization
             // --- 3. Find potential matching API Keys and Verify Hash ---
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+            var apiKeyHasher = scope.ServiceProvider.GetRequiredService<IApiKeyHasher>(); //Scoped so can't inject
 
             // 3a. Find *all* active API Keys (can't filter by hash directly)
             // This could be inefficient if there are many keys. Consider optimizations if needed.
@@ -103,18 +101,9 @@ namespace GrafanaProxy.Web.Authorization
                 .Include(k => k.Tenant) // Eager load the Tenant
                 .ToListAsync(); // Fetch all active keys
 
-            ApiKey? matchedApiKeyEntity = null;
-            foreach(var potentialKey in activeKeys)
-            {
-                if (_apiKeyHasher.VerifyApiKey(plainTextApiKey, potentialKey.KeyValue))
-                {
-                    matchedApiKeyEntity = potentialKey; // Found a match!
-                    break; 
-                }
-            }
-            
+            var matchedApiKeyEntity = activeKeys.FirstOrDefault(potentialKey => apiKeyHasher.VerifyApiKey(plainTextApiKey, potentialKey.KeyValue));
             // 3b. Check if a key was found and verified
-            if (matchedApiKeyEntity is null || matchedApiKeyEntity.Tenant is null)
+            if (matchedApiKeyEntity?.Tenant is null)
             {
                 _logger.LogWarning("Invalid or inactive API Key presented (verification failed or key/tenant not found).");
                 context.Fail(new AuthorizationFailureReason(this, "Invalid API Key."));
@@ -125,7 +114,7 @@ namespace GrafanaProxy.Web.Authorization
             var tenantName = matchedApiKeyEntity.Tenant?.Name ?? "Unknown"; // Use null-conditional access
 
             // 3c. Check if that Tenant has permission for the dashboard
-            bool hasPermission = await dbContext.TenantDashboardPermissions
+            var hasPermission = await dbContext.TenantDashboardPermissions
                 .AnyAsync(p => p.TenantId == tenantId &&
                                p.DashboardUid.ToUpper() == dashboardUid.ToUpper()); // Case-insensitive check for UID
 

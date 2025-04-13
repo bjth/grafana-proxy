@@ -175,7 +175,7 @@ namespace GrafanaProxy.Tests.Authorization
             SetupRouteData(dashboardUid);
             var context = CreateAuthorizationContext(user);
             // Pass the hasher instance from the service provider
-            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider, _apiKeyHasher);
+            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider);
 
             // Act
             await handler.HandleAsync(context);
@@ -201,7 +201,7 @@ namespace GrafanaProxy.Tests.Authorization
             SetupRouteData(dashboardUid);
             var context = CreateAuthorizationContext(user);
              // Pass the hasher instance from the service provider
-            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider, _apiKeyHasher);
+            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider);
 
             // Act
             await handler.HandleAsync(context);
@@ -223,7 +223,7 @@ namespace GrafanaProxy.Tests.Authorization
             SetupRouteData(dashboardUid);
             var context = CreateAuthorizationContext(user);
              // Pass the hasher instance from the service provider
-            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider, _apiKeyHasher);
+            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider);
 
             // Act
             await handler.HandleAsync(context);
@@ -249,7 +249,7 @@ namespace GrafanaProxy.Tests.Authorization
             SetupRouteData(dashboardUid);
             var context = CreateAuthorizationContext(user);
              // Pass the hasher instance from the service provider
-            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider, _apiKeyHasher);
+            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider);
 
             // Act
             await handler.HandleAsync(context);
@@ -275,7 +275,7 @@ namespace GrafanaProxy.Tests.Authorization
             SetupRouteData(null); // No dashboardUid in route
             var context = CreateAuthorizationContext(user);
              // Pass the hasher instance from the service provider
-            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider, _apiKeyHasher);
+            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider);
 
             // Act
             await handler.HandleAsync(context);
@@ -303,7 +303,7 @@ namespace GrafanaProxy.Tests.Authorization
             SetupRouteData(null, remainder);
             var context = CreateAuthorizationContext(user);
              // Pass the hasher instance from the service provider
-            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider, _apiKeyHasher);
+            var handler = new TenantAccessHandler(_mockLogger.Object, _mockHttpContextAccessor.Object, _serviceProvider);
 
             // Act
             await handler.HandleAsync(context);

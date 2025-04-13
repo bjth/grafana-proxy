@@ -74,21 +74,13 @@ try
         });
 
     // --- Authorization ---
-    builder.Services.AddAuthorization(options =>
-    {
-        // Policy requiring valid tenant access to a specific dashboard
-        options.AddPolicy("TenantCanAccessDashboard", policy =>
+    builder.Services.AddAuthorizationBuilder()
+                                    // --- Authorization ---
+                                    .AddPolicy("TenantCanAccessDashboard", policy =>
         {
-            policy.RequireAuthenticatedUser(); // Must be authenticated first
+            //        policy.RequireAuthenticatedUser(); // Must be authenticated first
             policy.Requirements.Add(new TenantAccessRequirement()); // Add our custom requirement
         });
-
-        // You might have other policies here
-        options.AddPolicy("AuthenticatedUser", policy =>
-        {
-            policy.RequireAuthenticatedUser();
-        });
-    });
 
     // Register the custom Authorization Handler
     builder.Services.AddSingleton<IAuthorizationHandler, TenantAccessHandler>(); // Can be Singleton if using IServiceProvider for DbContext
@@ -149,7 +141,7 @@ try
 
     app.UseRouting(); // Routing must come before AuthN/AuthZ
 
-    app.UseAuthentication(); // Add Authentication middleware
+    //app.UseAuthentication(); // Add Authentication middleware
     app.UseAuthorization(); // Add Authorization middleware
 
     // Map controllers if any exist
